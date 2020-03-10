@@ -4,7 +4,9 @@
 
 1. Ensure that you have set up credentials per https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html
 
-2. Make sure that maven is installed on your system.
+2. Make sure that maven is installed on your system. Maven needs JDK installed as a prerequisite. You can install maven by following the instructions here :
+
+https://maven.apache.org/install.html
 
 3. Run
 
