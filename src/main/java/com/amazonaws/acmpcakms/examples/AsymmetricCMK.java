@@ -49,6 +49,7 @@ public class AsymmetricCMK {
                 .findFirst()
                 .orElseGet(this::createKey);
 
+        System.out.println();
         System.out.println("Alias " + alias + " maps to key id " + keyId);
     }
 
