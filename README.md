@@ -24,7 +24,7 @@ The above should build and execute the code while showing you printouts for the 
 
 ## Cleanup
 
-If you do execute the code and do not perform the clean up, you will be accruing costs for the ACM Private CA that has been setup. Please delete the CA's by going into the AWS Certificate Manager Private CA on the AWS console. Please note that the CA needs to be disable before you can delete it.
+If you do execute the code and do not perform the clean up, you will be accruing costs for the ACM Private CA's that has been setup. Please delete the CA's by going into the AWS Certificate Manager Private CA on the AWS console. Please note that the CA needs to be disabled before you can delete it. Also delete the asymmetric KMS key that was created, you can do this from the AWS KMS service on the AWS console.
 
 You can follow the instructions at the link below :
 
