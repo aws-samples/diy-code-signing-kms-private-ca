@@ -14,7 +14,7 @@ https://docs.aws.amazon.com/acm/latest/userguide/authen-awsmanagedpolicies.html
 
 https://maven.apache.org/install.html
 
-At least JDK version 8 is needed.
+At least JDK version 10 is needed for the code to execute successfully.
 
 4. For executing the code, you can use the commands below in the directory where the git repo is cloned
 
