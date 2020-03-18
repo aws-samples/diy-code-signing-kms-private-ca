@@ -18,7 +18,7 @@ At least JDK version 8 is needed.
 
 4. For executing the code, you can use the commands below in the directory where the git repo is cloned
 
- ##mvn verify##
+   mvn verify
 
 The above should build and execute the code while showing you printouts for the various steps involved.
 
