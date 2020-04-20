@@ -68,6 +68,11 @@ public class Runner {
         /* Verifying the authenticity of the signature and the integrity of the signed data */
         System.out.println();
         System.out.println("Verifying the authenticity of the signature and the integrity of the signed data\n");
+
+        /* The root CA certificate is stored in rootPrivate CA, which is an object of the PrivateCA class. This sample code is not implementing a full fledged trust store and hence 
+           the root CA cert is stored in an object instance. This allows to perform the signature validation by getting the root CA from the object instance instead of making a ACM private CA API 
+           call to get the root CA certificate. You can see this happening in the file PrivateCA.java lines 62-70
+        */
         String rootCACertificate = rootPrivateCA.getCertificate();
         String customCodeSigningObjectCertificateChain = codeSigningCertificate.getCertificate() + "\n" + codeSigningCertificate.getCertificateChain();
 
