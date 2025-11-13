@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.Security;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -32,62 +33,9 @@ public class Runner {
     return String.join(", ", AlgorithmFamilyRegistry.getSupportedFamilies());
   }
 
-  public static void main(String[] args) throws Exception {
-
-    // Parse command line arguments
-    String filePath;
-    String algorithmFamilyName;
-
-    if (args.length == 0) {
-      // Default case: use default file and algorithm
-      filePath = DEFAULT_FILE_PATH;
-      algorithmFamilyName = DEFAULT_ALGORITHM_FAMILY;
-    } else if (args.length == 1 || args.length > 2) {
-      // Invalid argument count: show usage
-      System.err.println("Usage: java Runner [file_path algorithm]");
-      System.err.println(
-          "  file_path  - Path to the file to sign (default: " + DEFAULT_FILE_PATH + ")");
-      System.err.println(
-          "  algorithm  - Algorithm family to use (default: " + DEFAULT_ALGORITHM_FAMILY + ")");
-      System.err.println();
-      System.err.println("Examples:");
-      System.err.println("  java Runner                                    # Use defaults");
-      System.err.println(
-          "  java Runner myfile.jar RSA2048                # Sign myfile.jar with RSA2048");
-      System.err.println(
-          "  java Runner /path/to/file.bin ECP256           # Sign file with ECP256");
-      System.err.println(
-          "  java Runner document.pdf MLDSA44              # Sign PDF with ML-DSA-44");
-      System.err.println();
-      System.err.println("Supported algorithms: " + getSupportedAlgorithmsString());
-      return;
-    } else {
-      // Two arguments provided
-      filePath = args[0];
-      algorithmFamilyName = args[1];
-    }
-
-    // Validate and get algorithm family
-    AlgorithmFamily algorithmFamily;
-    try {
-      algorithmFamily = AlgorithmFamilyRegistry.getFamily(algorithmFamilyName);
-      System.out.println("Using algorithm family: " + algorithmFamily.getFamilyName());
-      System.out.println("Using file: " + filePath);
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error: " + e.getMessage());
-      System.err.println("Supported algorithms: " + getSupportedAlgorithmsString());
-      return;
-    }
-
-    // Read the file to be signed
-    byte[] dataToSign;
-    try {
-      dataToSign = Files.readAllBytes(Paths.get(filePath));
-      System.out.println("File size: " + dataToSign.length + " bytes");
-    } catch (IOException e) {
-      System.err.println("Error reading file '" + filePath + "': " + e.getMessage());
-      return;
-    }
+  private static void privateCaDemo(AlgorithmFamily algorithmFamily, byte[] dataToSign)
+      throws Exception {
+    byte[] originalDataFromFile = Arrays.copyOf(dataToSign, dataToSign.length);
 
     // Create algorithm-specific names to avoid collisions between different
     // algorithm families
@@ -202,9 +150,6 @@ public class Runner {
     System.out.println();
     System.out.println("Demonstrating verification from separate files\n");
 
-    // Read original data from the original file (not a copy)
-    byte[] originalDataFromFile = Files.readAllBytes(Paths.get(filePath));
-
     // Read and parse CMS signature from .p7s file
     byte[] signatureFromFile = Files.readAllBytes(Paths.get(signatureFileName));
     CMSCodeSigningObject cmsFromFile = CMSCodeSigningObject.fromBytes(signatureFromFile);
@@ -213,5 +158,65 @@ public class Runner {
     cmsFromFile.verifyDetachedSignature(originalDataFromFile, rootCACertificate);
 
     System.out.println("Detached CMS signature verification successful!");
+  }
+
+  public static void main(String[] args) throws Exception {
+
+    // Parse command line arguments
+    String filePath;
+    String algorithmFamilyName;
+
+    if (args.length == 0) {
+      // Default case: use default file and algorithm
+      filePath = DEFAULT_FILE_PATH;
+      algorithmFamilyName = DEFAULT_ALGORITHM_FAMILY;
+    } else if (args.length == 1 || args.length > 2) {
+      // Invalid argument count: show usage
+      System.err.println("Usage: java Runner [file_path algorithm]");
+      System.err.println(
+          "  file_path  - Path to the file to sign (default: " + DEFAULT_FILE_PATH + ")");
+      System.err.println(
+          "  algorithm  - Algorithm family to use (default: " + DEFAULT_ALGORITHM_FAMILY + ")");
+      System.err.println();
+      System.err.println("Examples:");
+      System.err.println("  java Runner                                    # Use defaults");
+      System.err.println(
+          "  java Runner myfile.jar RSA2048                # Sign myfile.jar with RSA2048");
+      System.err.println(
+          "  java Runner /path/to/file.bin ECP256           # Sign file with ECP256");
+      System.err.println(
+          "  java Runner document.pdf MLDSA44              # Sign PDF with ML-DSA-44");
+      System.err.println();
+      System.err.println("Supported algorithms: " + getSupportedAlgorithmsString());
+      return;
+    } else {
+      // Two arguments provided
+      filePath = args[0];
+      algorithmFamilyName = args[1];
+    }
+
+    // Validate and get algorithm family
+    AlgorithmFamily algorithmFamily;
+    try {
+      algorithmFamily = AlgorithmFamilyRegistry.getFamily(algorithmFamilyName);
+      System.out.println("Using algorithm family: " + algorithmFamily.getFamilyName());
+      System.out.println("Using file: " + filePath);
+    } catch (IllegalArgumentException e) {
+      System.err.println("Error: " + e.getMessage());
+      System.err.println("Supported algorithms: " + getSupportedAlgorithmsString());
+      return;
+    }
+
+    // Read the file to be signed
+    byte[] dataToSign;
+    try {
+      dataToSign = Files.readAllBytes(Paths.get(filePath));
+      System.out.println("File size: " + dataToSign.length + " bytes");
+    } catch (IOException e) {
+      System.err.println("Error reading file '" + filePath + "': " + e.getMessage());
+      return;
+    }
+
+    privateCaDemo(algorithmFamily, dataToSign);
   }
 }
