@@ -82,6 +82,10 @@
         <artifactId>acmpca</artifactId>
       </dependency>
       <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>aws-crt-client</artifactId>
+      </dependency>
+      <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
         <version>1.81</version>

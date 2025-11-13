@@ -16,7 +16,7 @@ import software.amazon.awssdk.services.acmpca.model.*;
 
 public class Runner {
 
-  private static final String DEFAULT_ALGORITHM_FAMILY = "RSA2048";
+  private static final String DEFAULT_ALGORITHM_FAMILY = AlgorithmFamilyRegistry.RSA2048.getName();
   private static final String DEFAULT_FILE_PATH =
       "target/diy-code-signing-kms-private-ca-1.0-SNAPSHOT.jar";
   private static final String ROOT_COMMON_NAME = "CodeSigningRoot";

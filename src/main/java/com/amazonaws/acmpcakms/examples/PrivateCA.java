@@ -3,7 +3,8 @@ package com.amazonaws.acmpcakms.examples;
 import com.amazonaws.acmpcakms.examples.algorithms.AlgorithmFamily;
 import java.util.*;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.crt.AwsCrtHttpClient;
 import software.amazon.awssdk.services.acmpca.AcmPcaClient;
 import software.amazon.awssdk.services.acmpca.model.*;
 import software.amazon.awssdk.services.acmpca.waiters.AcmPcaWaiter;
@@ -42,7 +43,10 @@ public class PrivateCA {
       throw new IllegalArgumentException("A subordinate CA must have an issuer specified");
     }
 
-    this.client = AcmPcaClient.builder().region(Region.US_EAST_1).build();
+    // Set up a PQ TLS HTTP client that will be used when connecting to AWS
+    SdkHttpClient awsCrtHttpClient = AwsCrtHttpClient.builder().postQuantumTlsEnabled(true).build();
+
+    this.client = AcmPcaClient.builder().httpClient(awsCrtHttpClient).build();
     this.commonName = commonName;
     this.type = type;
     this.algorithmFamily = algorithmFamily;
@@ -79,7 +83,13 @@ public class PrivateCA {
 
   private boolean matches(CertificateAuthority ca) {
     return type.equals(ca.type())
-        && commonName.equals(ca.certificateAuthorityConfiguration().subject().commonName());
+        && commonName.equals(ca.certificateAuthorityConfiguration().subject().commonName())
+        && algorithmFamily
+            .getPcaKeyAlgorithm()
+            .equals(ca.certificateAuthorityConfiguration().keyAlgorithm())
+        && algorithmFamily
+            .getPcaSigningAlgorithm()
+            .equals(ca.certificateAuthorityConfiguration().signingAlgorithm());
   }
 
   private CertificateAuthority createCA() {
@@ -129,7 +139,10 @@ public class PrivateCA {
           ListCertificateAuthoritiesRequest.builder().nextToken(nextToken).build();
       ListCertificateAuthoritiesResponse results = client.listCertificateAuthorities(request);
 
-      discoveredCAs.addAll(results.certificateAuthorities());
+      discoveredCAs.addAll(
+          results.certificateAuthorities().stream()
+              .filter(ca -> ca.status().equals(CertificateAuthorityStatus.ACTIVE))
+              .toList());
       nextToken = results.nextToken();
     } while (Objects.nonNull(nextToken));
 
@@ -243,6 +256,7 @@ public class PrivateCA {
     ImportCertificateAuthorityCertificateRequest importCACertRequest =
         ImportCertificateAuthorityCertificateRequest.builder()
             .certificateAuthorityArn(ca.arn())
+            .certificateChain(SdkBytes.fromUtf8String(getCertificateResult.certificateChain()))
             .certificate(SdkBytes.fromUtf8String(getCertificateResult.certificate()))
             .build();
 

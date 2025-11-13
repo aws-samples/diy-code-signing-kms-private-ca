@@ -21,7 +21,8 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 import org.bouncycastle.util.io.pem.PemObjectGenerator;
 import org.bouncycastle.util.io.pem.PemWriter;
-import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.crt.AwsCrtHttpClient;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.*;
 
@@ -40,7 +41,10 @@ public class AsymmetricCMK {
       throw new IllegalArgumentException("An algorithm family must be specified");
     }
 
-    this.client = KmsClient.builder().region(Region.US_EAST_1).build();
+    // Set up a PQ TLS HTTP client that will be used when connecting to AWS
+    SdkHttpClient awsCrtHttpClient = AwsCrtHttpClient.builder().postQuantumTlsEnabled(true).build();
+
+    this.client = KmsClient.builder().httpClient(awsCrtHttpClient).build();
     this.alias = alias;
     this.algorithmFamily = algorithmFamily;
 
