@@ -10,6 +10,9 @@ import software.amazon.awssdk.services.acmpca.model.*;
 import software.amazon.awssdk.services.acmpca.waiters.AcmPcaWaiter;
 
 public class PrivateCA {
+  // Set up a PQ TLS HTTP client that will be used when connecting to AWS
+  private static final SdkHttpClient AWS_CRT_HTTP_CLIENT =
+      AwsCrtHttpClient.builder().postQuantumTlsEnabled(true).build();
 
   private final AcmPcaClient client;
   private final String commonName;
@@ -43,10 +46,7 @@ public class PrivateCA {
       throw new IllegalArgumentException("A subordinate CA must have an issuer specified");
     }
 
-    // Set up a PQ TLS HTTP client that will be used when connecting to AWS
-    SdkHttpClient awsCrtHttpClient = AwsCrtHttpClient.builder().postQuantumTlsEnabled(true).build();
-
-    this.client = AcmPcaClient.builder().httpClient(awsCrtHttpClient).build();
+    this.client = AcmPcaClient.builder().httpClient(AWS_CRT_HTTP_CLIENT).build();
     this.commonName = commonName;
     this.type = type;
     this.algorithmFamily = algorithmFamily;
@@ -63,7 +63,7 @@ public class PrivateCA {
     this.ca = discoveredCAs.stream().filter(this::matches).findFirst().orElseGet(this::createCA);
 
     System.out.println(
-        "Got CA with CN=" + commonName + ": arn=" + ca.arn() + ", status=" + ca.status());
+        "Using CA with CN=" + commonName + ": arn=" + ca.arn() + ", status=" + ca.status());
 
     if (ca.status().equals(CertificateAuthorityStatus.ACTIVE)) {
       certificate = getCACertificate();
@@ -150,7 +150,7 @@ public class PrivateCA {
   }
 
   private String getCACSR() {
-    System.out.println("Retrieving CA CSR for arn=" + ca.arn());
+    System.out.println("Retrieving CA CertSigningRequest for arn=" + ca.arn());
 
     GetCertificateAuthorityCsrRequest getCACSRRequest =
         GetCertificateAuthorityCsrRequest.builder().certificateAuthorityArn(ca.arn()).build();
@@ -162,7 +162,12 @@ public class PrivateCA {
         client.getCertificateAuthorityCsr(getCACSRRequest);
     String caCSR = getCACSRResult.csr();
 
-    System.out.println("CA CSR for arn=" + ca.arn() + ":\n" + caCSR);
+    System.out.println(
+        "Retrieved CA CertificateSigningRequest for arn="
+            + ca.arn()
+            + ", CertSigningRequest length: "
+            + caCSR.getBytes().length
+            + " bytes");
 
     return caCSR;
   }
@@ -181,21 +186,13 @@ public class PrivateCA {
 
     GetCertificateResponse result = client.getCertificate(getCertificateRequest);
 
-    System.out.println(
-        "Certificate for arn="
-            + certificateArn
-            + ":\n"
-            + result.certificateChain()
-            + "\n"
-            + result.certificate());
-
     return result;
   }
 
   private String activateRootCA() {
     String caCSR = getCACSR();
 
-    System.out.println("Issuing CA certificate for for arn=" + ca.arn());
+    System.out.println("Activating Root CA certificate for arn=" + ca.arn());
 
     Validity validity = Validity.builder().type(ValidityPeriodType.YEARS).value(10L).build();
 
@@ -215,7 +212,7 @@ public class PrivateCA {
 
     GetCertificateResponse getCertificateResult = getCertificate(ca, caCertificateArn);
 
-    System.out.println("Importing CA certificate for for arn=" + ca.arn());
+    System.out.println("Importing CA certificate for arn=" + ca.arn());
 
     ImportCertificateAuthorityCertificateRequest importCACertRequest =
         ImportCertificateAuthorityCertificateRequest.builder()
@@ -231,7 +228,7 @@ public class PrivateCA {
   private String activateSubordinateCA(CertificateAuthority issuingCA) {
     String caCSR = getCACSR();
 
-    System.out.println("Issuing CA certificate for for arn=" + ca.arn());
+    System.out.println("Activating Subordinate CA certificate for arn=" + ca.arn());
 
     Validity validity = Validity.builder().type(ValidityPeriodType.YEARS).value(5L).build();
 
@@ -251,7 +248,7 @@ public class PrivateCA {
 
     GetCertificateResponse getCertificateResult = getCertificate(issuingCA, caCertificateArn);
 
-    System.out.println("Importing CA certificate for for arn=" + ca.arn());
+    System.out.println("Importing CA certificate for arn=" + ca.arn());
 
     ImportCertificateAuthorityCertificateRequest importCACertRequest =
         ImportCertificateAuthorityCertificateRequest.builder()
@@ -266,7 +263,11 @@ public class PrivateCA {
   }
 
   public GetCertificateResponse issueCodeSigningCertificate(String csr) {
-    System.out.println("Issuing code signing certificate for for arn=" + ca.arn());
+    System.out.println(
+        "Issuing Leaf Code Signing Certificate. Submitting CertificateSigningRequest PEM to ACM to be signed by "
+            + algorithmFamily.getFamilyName()
+            + " CA arn="
+            + ca.arn());
 
     Validity validity = Validity.builder().type(ValidityPeriodType.YEARS).value(1L).build();
 
@@ -295,7 +296,7 @@ public class PrivateCA {
 
     GetCertificateResponse result = client.getCertificate(getCertificateRequest);
 
-    System.out.println("Generated code signing certificate:\n" + result.certificate());
+    System.out.println("ACM generated leaf code signing certificate: " + certificateArn);
 
     return result;
   }

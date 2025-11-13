@@ -27,6 +27,9 @@ import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.*;
 
 public class AsymmetricCMK {
+  // Set up a PQ TLS HTTP client that will be used when connecting to AWS
+  private static final SdkHttpClient AWS_CRT_HTTP_CLIENT =
+      AwsCrtHttpClient.builder().postQuantumTlsEnabled(true).build();
 
   private final KmsClient client;
   private final String alias;
@@ -41,10 +44,7 @@ public class AsymmetricCMK {
       throw new IllegalArgumentException("An algorithm family must be specified");
     }
 
-    // Set up a PQ TLS HTTP client that will be used when connecting to AWS
-    SdkHttpClient awsCrtHttpClient = AwsCrtHttpClient.builder().postQuantumTlsEnabled(true).build();
-
-    this.client = KmsClient.builder().httpClient(awsCrtHttpClient).build();
+    this.client = KmsClient.builder().httpClient(AWS_CRT_HTTP_CLIENT).build();
     this.alias = alias;
     this.algorithmFamily = algorithmFamily;
 
@@ -57,7 +57,6 @@ public class AsymmetricCMK {
             .findFirst()
             .orElseGet(this::createKey);
 
-    System.out.println();
     System.out.println("Alias " + alias + " maps to key id " + keyId);
   }
 
@@ -90,7 +89,7 @@ public class AsymmetricCMK {
   }
 
   private String createKey() {
-    System.out.println("No matching CMK found, creating a new one (" + this + ")");
+    System.out.println("No matching KMS Key found, creating a new one (" + this + ")");
 
     CreateKeyRequest createKeyRequest =
         CreateKeyRequest.builder()
@@ -101,7 +100,7 @@ public class AsymmetricCMK {
     CreateKeyResponse createKeyResponse = client.createKey(createKeyRequest);
     String keyId = createKeyResponse.keyMetadata().keyId();
 
-    System.out.println("Created CMK. Creating alias for key=" + keyId);
+    System.out.println("Created KMS Key. Creating alias for key=" + keyId);
 
     CreateAliasRequest createAliasRequest =
         CreateAliasRequest.builder().aliasName("alias/" + alias).targetKeyId(keyId).build();
@@ -115,8 +114,6 @@ public class AsymmetricCMK {
 
   private PublicKey getPublicKey() {
     try {
-      System.out.println("Getting public key for key=" + keyId);
-
       GetPublicKeyRequest getPublicKeyRequest = GetPublicKeyRequest.builder().keyId(keyId).build();
 
       GetPublicKeyResponse getPublicKeyResponse = client.getPublicKey(getPublicKeyRequest);
@@ -128,7 +125,14 @@ public class AsymmetricCMK {
                   algorithmFamily.getKeyFactoryAlgorithm(), BouncyCastleProvider.PROVIDER_NAME)
               .generatePublic(publicKeySpec);
 
-      System.out.println("Public key for key=" + keyId + ":\n" + publicKey);
+      System.out.println(
+          "Retrieved "
+              + algorithmFamily.getFamilyName()
+              + " Public key for KMS key="
+              + keyId
+              + " with length of "
+              + publicKeyBytes.length
+              + " bytes");
 
       return publicKey;
     } catch (Exception ex) {
@@ -162,7 +166,7 @@ public class AsymmetricCMK {
 
       String csrPEM = csrStringWriter.toString();
 
-      System.out.println("Generated CSR:\n" + csrPEM);
+      System.out.println("Generated CertificateSigningRequest PEM for CommonName: " + commonName);
 
       return csrPEM;
     } catch (Exception ex) {
@@ -176,7 +180,7 @@ public class AsymmetricCMK {
 
   @Override
   public String toString() {
-    return "AsymmetricCMK{"
+    return "AsymmetricKmsKey{"
         + "alias='"
         + alias
         + '\''

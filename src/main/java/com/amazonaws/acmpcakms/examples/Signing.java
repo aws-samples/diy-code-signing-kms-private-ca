@@ -3,7 +3,6 @@ package com.amazonaws.acmpcakms.examples;
 import com.amazonaws.acmpcakms.examples.algorithms.AlgorithmFamily;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
-import java.util.Base64;
 import java.util.Objects;
 import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -19,8 +18,7 @@ public class Signing {
 
   public static ContentSigner createContentSigner(
       AsymmetricCMK cmk, AlgorithmFamily algorithmFamily) throws Exception {
-    String signatureAlgorithm = algorithmFamily.getKmsSigningAlgorithm().toString();
-    return new KMSCMKContentSignerBuilder(cmk, algorithmFamily).build(signatureAlgorithm);
+    return new KMSCMKContentSignerBuilder(cmk, algorithmFamily).build();
   }
 
   private static AlgorithmIdentifier findAlgorithmIdentifier(AlgorithmFamily algorithmFamily) {
@@ -51,7 +49,7 @@ public class Signing {
       this.algorithmFamily = algorithmFamily;
     }
 
-    public ContentSigner build(String signatureAlgorithm) {
+    public ContentSigner build() {
       ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       AlgorithmIdentifier algorithmIdentifier = findAlgorithmIdentifier(algorithmFamily);
 
@@ -72,14 +70,6 @@ public class Signing {
           String keyId = cmk.getKeyId();
           byte[] input = outputStream.toByteArray();
 
-          System.out.println(
-              "Generating signature with key="
-                  + cmk.getKeyId()
-                  + " using "
-                  + algorithmFamily.getFamilyName()
-                  + " family for input "
-                  + Base64.getEncoder().encodeToString(input));
-
           SignRequest signRequest =
               SignRequest.builder()
                   .keyId(keyId)
@@ -91,7 +81,15 @@ public class Signing {
           byte[] signature = signResponse.signature().asByteArray();
 
           System.out.println(
-              "Signature with key=" + keyId + ": " + Base64.getEncoder().encodeToString(signature));
+              "KMS Signed message with "
+                  + algorithmFamily.getFamilyName()
+                  + " key="
+                  + cmk.getKeyId()
+                  + ", msgLen="
+                  + input.length
+                  + " bytes, signatureLen="
+                  + signature.length
+                  + " bytes.");
 
           return signature;
         }

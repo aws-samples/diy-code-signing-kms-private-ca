@@ -51,6 +51,10 @@ public class CMSCodeSigningObject {
     return fromBytes(cmsBytes);
   }
 
+  public static String getSubjectName(X509Certificate certificate) {
+    return certificate.getSubjectDN().getName();
+  }
+
   public static CMSCodeSigningObject createDetachedSignature(
       AsymmetricCMK cmk,
       AlgorithmFamily algorithmFamily,
@@ -75,11 +79,6 @@ public class CMSCodeSigningObject {
       throw new IllegalArgumentException("Certificate chain must not be null or empty");
     }
 
-    System.out.println(
-        "Creating detached CMS signature using "
-            + algorithmFamily.getFamilyName()
-            + " algorithm family");
-
     // Create CMS generator for detached signatures
     CMSSignedDataGenerator generator = new CMSSignedDataGenerator();
 
@@ -89,6 +88,8 @@ public class CMSCodeSigningObject {
     generator.addCertificates(certStore);
 
     // Get content signer from Signing class
+    System.out.println(
+        "Creating a BouncyCastle ContentSigner which will call out to KMS for signing operations.");
     ContentSigner contentSigner = Signing.createContentSigner(cmk, algorithmFamily);
 
     // Create signer info generator with authenticated attributes
@@ -106,7 +107,8 @@ public class CMSCodeSigningObject {
     CMSTypedData content = new CMSProcessableByteArray(dataToSign);
     CMSSignedData signedData = generator.generate(content, false); // false = detached signature
 
-    System.out.println("Successfully created detached CMS signature");
+    System.out.println(
+        "Successfully created detached " + algorithmFamily.getFamilyName() + " signature.");
 
     return new CMSCodeSigningObject(signedData);
   }
@@ -115,7 +117,7 @@ public class CMSCodeSigningObject {
       throws Exception {
     validateInputs(originalData, rootCertificate);
 
-    System.out.println("Verifying detached CMS signature using standard PKIX validation");
+    System.out.println("Verifying detached signature using standard PKIX validation");
 
     Set<TrustAnchor> trustAnchors = createTrustAnchors(rootCertificate);
     CertStore pkixCertStore = createCertStore();
@@ -124,8 +126,6 @@ public class CMSCodeSigningObject {
 
     validateCertificatePath(trustAnchors, pkixCertStore, signerCertHolder);
     verifySignature(originalData, signerCertHolder);
-
-    System.out.println("CMS signature verified successfully");
   }
 
   private void validateInputs(byte[] originalData, X509CertificateHolder rootCertificate) {
@@ -150,7 +150,7 @@ public class CMSCodeSigningObject {
     Collection<X509CertificateHolder> cmsEmbeddedCerts = certStore.getMatches(null);
 
     if (cmsEmbeddedCerts.isEmpty()) {
-      throw new SignatureException("No certificates found in CMS structure");
+      throw new SignatureException("No certificates found in detached signature.");
     }
 
     Set<X509Certificate> intermediateCerts = new HashSet<>();
@@ -178,7 +178,7 @@ public class CMSCodeSigningObject {
     Collection<X509CertificateHolder> matches = certStore.getMatches(signer.getSID());
 
     if (matches.isEmpty()) {
-      throw new SignatureException("Signer certificate not found in CMS structure");
+      throw new SignatureException("Signer certificate not found in detached signature.");
     }
 
     return matches.iterator().next();
@@ -200,9 +200,18 @@ public class CMSCodeSigningObject {
 
     CertPathBuilder pathBuilder =
         CertPathBuilder.getInstance("PKIX", BouncyCastleProvider.PROVIDER_NAME);
-    pathBuilder.build(pkixParams);
+    CertPathBuilderResult result = pathBuilder.build(pkixParams);
+    String certPath =
+        String.join(
+            ", ",
+            result.getCertPath().getCertificates().stream()
+                .map(cert -> getSubjectName((X509Certificate) cert))
+                .toList());
 
-    System.out.println("Certificate path validation successful");
+    System.out.println(
+        "Certificate path to trusted Root CA found. Path is {"
+            + certPath
+            + "}. Certificate Chain verified by BouncyCastle.");
   }
 
   private void verifySignature(byte[] originalData, X509CertificateHolder signerCertHolder)
@@ -222,7 +231,9 @@ public class CMSCodeSigningObject {
     SignerInformation newSigner = newSigners.getSigners().iterator().next();
 
     if (!newSigner.verify(verifier)) {
-      throw new SignatureException("CMS signature verification failed");
+      throw new SignatureException("Detached signature verification failed");
+    } else {
+      System.out.println("Leaf signature verified by BouncyCastle.");
     }
   }
 
@@ -240,7 +251,8 @@ public class CMSCodeSigningObject {
     }
 
     String pem = stringWriter.toString();
-    System.out.println("Generated CMS signature in PEM format:\n" + pem);
+    System.out.println(
+        "Generated detached signature in PEM format, length:\n" + pem.getBytes().length + " bytes");
 
     return pem;
   }
