@@ -15,12 +15,10 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import software.amazon.awssdk.services.acmpca.model.*;
 
 public class Runner {
-  private static final String DEFAULT_FILE_PATH =
-      "target/diy-code-signing-kms-private-ca-1.0-SNAPSHOT.jar";
+  private static final String DEFAULT_FILE_PATH = "target/diy-code-signing-kms-private-ca-1.0-SNAPSHOT.jar";
   private static final String VERSION_STRING = "-v1";
   private static final String ROOT_COMMON_NAME = "TestCodeSigningRootCA" + VERSION_STRING;
-  private static final String SUBORDINATE_COMMON_NAME =
-      "TestCodeSigningSubordinateCA" + VERSION_STRING;
+  private static final String SUBORDINATE_COMMON_NAME = "TestCodeSigningSubordinateCA" + VERSION_STRING;
   private static final String END_ENTITY_COMMON_NAME = "TestCodeSigningLeafCert" + VERSION_STRING;
   private static final String KMS_KEY_ALIAS = "TestCodeSigningKmsKey" + VERSION_STRING;
 
@@ -50,9 +48,8 @@ public class Runner {
     // Create algorithm-specific names to avoid collisions between different
     // algorithm families
     String algorithmSpecificRootName = ROOT_COMMON_NAME + "-" + algorithmFamily.getFamilyName();
-    String algorithmSpecificSubordinateName =
-        SUBORDINATE_COMMON_NAME + "-" + algorithmFamily.getFamilyName();
-    String algorithmSpecificCmkAlias = KMS_KEY_ALIAS + "-" + algorithmFamily.getFamilyName();
+    String algorithmSpecificSubordinateName = SUBORDINATE_COMMON_NAME + "-" + algorithmFamily.getFamilyName();
+    String algorithmSpecificKmsKeyAlias = KMS_KEY_ALIAS + "-" + algorithmFamily.getFamilyName();
 
     /*
      * Creating a CA hierarcy in AWS Private CA. This CA hiearchy consistant of a
@@ -81,7 +78,7 @@ public class Runner {
 
     AsymmetricCMK codeSigningCMK =
         AsymmetricCMK.builder()
-            .withAlias(algorithmSpecificCmkAlias)
+            .withAlias(algorithmSpecificKmsKeyAlias)
             .withAlgorithmFamily(algorithmFamily)
             .getOrCreate();
 

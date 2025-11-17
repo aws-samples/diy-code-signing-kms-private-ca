@@ -31,14 +31,6 @@
               <endWithNewline />
             </java>
           </configuration>
-          <executions>
-            <execution>
-              <phase>process-sources</phase>
-              <goals>
-                <goal>apply</goal>
-              </goals>
-            </execution>
-          </executions>
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
