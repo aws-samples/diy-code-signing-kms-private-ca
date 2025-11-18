@@ -50,6 +50,7 @@ public class Runner {
     String algorithmSpecificRootName = ROOT_COMMON_NAME + "-" + algorithmFamily.getFamilyName();
     String algorithmSpecificSubordinateName = SUBORDINATE_COMMON_NAME + "-" + algorithmFamily.getFamilyName();
     String algorithmSpecificKmsKeyAlias = KMS_KEY_ALIAS + "-" + algorithmFamily.getFamilyName();
+    String algorithmSpecificLeafCertCommonName = END_ENTITY_COMMON_NAME + "-" + algorithmFamily.getFamilyName();
 
     /*
      * Creating a CA hierarcy in AWS Private CA. This CA hiearchy consistant of a
@@ -76,7 +77,7 @@ public class Runner {
     System.out.println();
     System.out.println("\n\nStep 2: Creating a asymmetric key pair in AWS KMS\n");
 
-    AsymmetricCMK codeSigningCMK =
+    AsymmetricCMK codeSigningKmsKey =
         AsymmetricCMK.builder()
             .withAlias(algorithmSpecificKmsKeyAlias)
             .withAlgorithmFamily(algorithmFamily)
@@ -86,7 +87,7 @@ public class Runner {
     System.out.println();
     System.out.println(
         "\n\nStep 3: Creating a Certificate Signing Request to create a leaf code signing certificate\n");
-    String codeSigningCSR = codeSigningCMK.generateCSR(END_ENTITY_COMMON_NAME);
+    String codeSigningCSR = codeSigningKmsKey.generateCSR(algorithmSpecificLeafCertCommonName);
 
     /* Issuing the code signing certificate from AWS Private CA */
     System.out.println();
@@ -94,7 +95,7 @@ public class Runner {
     GetCertificateResponse codeSigningCertificate =
         subordinatePrivateCA.issueCodeSigningCertificate(codeSigningCSR);
 
-    /* Creating a detached CMS code signing object */
+    /* Creating a detached code signing object */
     System.out.println();
     System.out.println("\n\nStep 5: Creating a detached signature using leaf private key in KMS\n");
 
@@ -116,10 +117,10 @@ public class Runner {
       }
     }
 
-    // Create detached CMS signature
+    // Create detached signature
     CMSCodeSigningObject cmsCodeSigningObject =
         CMSCodeSigningObject.createDetachedSignature(
-            codeSigningCMK, algorithmFamily, dataToSign, signerCert, certChain);
+            codeSigningKmsKey, algorithmFamily, dataToSign, signerCert, certChain);
 
     /* Save signature and root CA certificate to files */
     System.out.println();
